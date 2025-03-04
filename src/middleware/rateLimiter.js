@@ -1,18 +1,9 @@
-import Redis from "ioredis"
 import {RateLimiterRedis} from "rate-limiter-flexible"
 import {rateLimit} from "express-rate-limit"
 import {RedisStore} from "rate-limit-redis"
 import { logger } from "../utils/logger.js"
+import { redisClient } from "../config/redis-client.js"
 
-
-export const redisClient = new Redis({
-    port: process.env.REDIS_PORT,
-    host: process.env.REDIS_HOST,
-    username: process.env.REDIS_USERNAME,
-    password: process.env.REDIS_PASSWORD,
-}).on('error', (error) => {
-    logger.error(error);
-})
 
 export const rateLimiter = new RateLimiterRedis({
     storeClient: redisClient,
