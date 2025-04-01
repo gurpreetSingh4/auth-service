@@ -5,7 +5,7 @@ import { RefreshToken } from "../models/RefreshToken.js"
 export const generateToken = async(user)=>{
     const payLoad = {
         userId: user._id,
-        username: user.username,
+        email: user.email,
         role: user.role
     }
     const accessToken = jwt.sign(

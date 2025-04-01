@@ -2,12 +2,6 @@ import mongoose from "mongoose"
 import argon2 from "argon2"
 
 const userSchema = new mongoose.Schema({
-    username: {
-        type: String,
-        required: true,
-        unique: true,
-        trim: true,
-    },
     email: {
         type: String,
         required: true,
@@ -19,15 +13,27 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    name:{
+        type: String,
+        required: true,
+    },
+    role:{
+        type: String,
+        enum: ["guest", "prime"],
+        default: "guest",
+    },
+    oAuthSub:{
+        type: String,
+        unique: true,
+    },
+    profilePicture:{
+        type: String,
+        default:process.env.DEFAULT_PROFILE_PIC || "https://img.freepik.com/free-psd/3d-illustration-person_23-2149436179.jpg"
+    },
     createdAt: {
         type: Date,
         default: Date.now,
     },
-    role:{
-        type: String,
-        enum: ["user", "prime"],
-        default: "user",
-    }
 },{
     timestamps: true
 })
