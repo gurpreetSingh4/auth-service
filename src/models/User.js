@@ -1,7 +1,13 @@
 import mongoose from "mongoose"
 import argon2 from "argon2"
+import dotenv from "dotenv"
 
+dotenv.config()
 const userSchema = new mongoose.Schema({
+    name:{
+        type: String,
+        required: true,
+    },
     email: {
         type: String,
         required: true,
@@ -13,22 +19,17 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    name:{
+    oAuthSub:{
         type: String,
-        required: true,
+    },
+    profilePicture:{
+        type: String,
+        default:process.env.DEFAULT_PROFILE_PIC,
     },
     role:{
         type: String,
         enum: ["guest", "prime"],
         default: "guest",
-    },
-    oAuthSub:{
-        type: String,
-        unique: true,
-    },
-    profilePicture:{
-        type: String,
-        default:process.env.DEFAULT_PROFILE_PIC || "https://img.freepik.com/free-psd/3d-illustration-person_23-2149436179.jpg"
     },
     createdAt: {
         type: Date,

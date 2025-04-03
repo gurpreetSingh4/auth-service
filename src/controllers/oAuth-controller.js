@@ -1,35 +1,16 @@
 import axios from "axios"
+import dotenv from "dotenv"
 import { logger } from "../utils/logger.js";
 import { User } from "../models/user.js";
 import { OAuthTokens } from "../models/OAuthTokens.js";
 import { redisClient } from "../config/redis-client.js";
-import crypto from "crypto"
-import fs from "fs"
-import dotenv from "dotenv"
+import { encryptToken, generateRandomPassword } from "../utils/cryptoFunctions.js";
+import { generateJwtToken, refreshAuthToken } from "../utils/generateToken.js";
+
 dotenv.config({
     path: './.env'
 })
 
-const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
-
-function encryptToken(token) {
-    const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
-    let encrypted = cipher.update(token, 'utf-8');
-    encrypted = Buffer.concat([encrypted, cipher.final()]);
-    decryptToken(Buffer.concat([iv, encrypted]).toString('hex'))
-    return Buffer.concat([iv, encrypted]).toString('hex');
-}
-
-function decryptToken(encryptedToken) {
-    const encryptedBuffer = Buffer.from(encryptedToken, 'hex');
-    const iv = encryptedBuffer.subarray(0, 16);
-    const encryptedData = encryptedBuffer.subarray(16);
-    const decipher = crypto.createDecipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
-    let decrypted = decipher.update(encryptedData);
-    decrypted = Buffer.concat([decrypted, decipher.final()]);
-    return decrypted.toString('utf-8'); 
-}
 
 async function getTokens(code){
     try{
@@ -58,39 +39,6 @@ async function getTokens(code){
 
 async function getUserInfo(accessToken){
     try{
-
-        // const mailResponse = await axios.get("https://gmail.googleapis.com/gmail/v1/users/me/messages", {
-        //     headers: { Authorization: `Bearer ${accessToken}` }
-        // });
-        // // console.log(JSON.stringify(mail.data, null, 2));
-
-
-        // const messageId = "195ed993d657d306"; // Replace with an actual ID
-        // const emailResponse = await axios.get(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}`, {
-        //     headers: { Authorization: `Bearer ${accessToken}` }
-        // });
-
-
-        // const fileContent = `
-        // === Mail Data ===
-        // ${JSON.stringify(mailResponse.data, null, 2)}
-        
-        // === Email Data ===
-        // ${JSON.stringify(emailResponse.data, null, 2)}
-        // `;
-
-        // // Write to a text file
-        // fs.writeFile('gmailData.txt', fileContent, (err) => {
-        //     if (err) {
-        //         console.error('Error writing to file', err);
-        //     } else {
-        //         console.log('Data successfully saved to gmailData.txt');
-        //     }
-        // });
-
-
-
-
         const { data } = await axios.get(process.env.USER_INFO_ENDPOINT, {
             headers: { Authorization: `Bearer ${accessToken}` }
         });
@@ -113,49 +61,12 @@ export function getGoogleOAuthUrl(){
             'https://www.googleapis.com/auth/userinfo.profile',
             'https://www.googleapis.com/auth/userinfo.email',
             'https://www.googleapis.com/auth/documents.readonly',
-            'https://www.googleapis.com/auth/gmail.readonly',
         ].join(' '),
         access_type: 'offline',  // Required to get refresh token
         prompt: 'consent'
     }
     const queryString = new URLSearchParams(options).toString();
     return `${process.env.OAUTH_ROOT_URL}?${queryString}`;
-}
-
-export async function refreshAccessToken(refreshToken){
-    const isRefreshTokenValid = await OAuthTokens.findOne({ refresh_token: refreshToken })
-    if(!isRefreshTokenValid){
-        logger.warn("Invalid refresh token")
-        return res.status(401).json({
-            success: false,
-            message: "Invalid refresh token"
-        })
-    }
-    const decryptedRefreshToken = decryptToken(refreshToken)
-    try{
-        const { data } = await axios.post(process.env.TOKEN_ENDPOINT, new URLSearchParams({
-            client_id: process.env.GOOGLE_CLIENT_ID,
-            client_secret: process.env.GOOGLE_CLIENT_SECRET,
-            refresh_token: decryptedRefreshToken,
-            grant_type: 'refresh_token'
-        }).toString(), {
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-        });
-
-        const { access_token, expires_in } = data;
-        const userId = isRefreshTokenValid.user
-        await redisClient.set(`oAuthAccessToken:${userId}`, access_token, 'EX', expires_in * 1000 - Date.now());
-        res.status(200).json({
-            success: true,
-            message: "Access token refreshed successfully"
-        })
-    }catch(error){
-        logger.error('Error during Oauth refresh token:', error.response.data);
-        res.status(500).json({
-            message: 'Error during Oauth refresh token',
-            success: false
-        });
-    }
 }
 
 export const finalizeOAuth = async (req, res) => {
@@ -186,26 +97,35 @@ export const finalizeOAuth = async (req, res) => {
                 message: "Failed to get user info"
             })
         }
-        console.log("User info", {userInfo})
+
         const {sub, name, email, picture} = userInfo // sub is the unique identifier for the user in Google
         const isUserExist = await User.findOne({email})
         if(isUserExist){
             logger.info("User already exists")
-            await redisClient.set(`oAuthAccessToken:${isUserExist._id}`, tokens.access_token, 'EX', tokens.expires_at - Date.now());
+            const jwtAccessToken = generateJwtToken(isUserExist)
+            await redisClient.set(`${process.env.AUTHACCESSTOKENREDIS}:${isUserExist._id}`, jwtAccessToken, 'EX', 3599 );
+            isUserExist.password = undefined // remove password from user object
+            req.user = isUserExist
             return res.status(200).json({
                 success: true,
                 message: "User already exists and access token is updated",
-                user: isUserExist._id
+                data: isUserExist._id
             })
         }
+
+        const defaultPassword = generateRandomPassword(8)
+
         const newUser = new User({
             name,
             email,
-            password: 'null',  // password is not required for OAuth users  **************** pending *******
+            password: defaultPassword, 
             oAuthSub: sub,
             profilePicture: picture
         })
         await newUser.save()
+
+// **************** pending ********* send email to user with default password
+
         logger.info("User registered successfully", newUser._id)
 
         const { refresh_token, scope, id_token} = tokens
@@ -217,13 +137,28 @@ export const finalizeOAuth = async (req, res) => {
             scope
         })
         await newTokensData.save()
-        await redisClient.set(`oAuthAccessToken:${newUser._id}`, tokens.access_token, 'EX', tokens.expires_at - Date.now());
+        const jwtAccessToken = generateJwtToken(newUser)
+        await redisClient.set(`${process.env.AUTHACCESSTOKENREDIS}:${newUser._id}`, jwtAccessToken, 'EX', 3599);
         logger.info("Tokens saved successfully", newTokensData._id)
+
+         const refreshTokenInterval = setInterval(async()=>{
+              try{
+                const refreshToken = await refreshAuthToken(newUser);
+                if(!refreshToken){
+                  logger.warn("Token not found in Redis");
+                  clearInterval(refreshTokenInterval); // Stop the interval if token is not found
+                } else {
+                  logger.info("Token refreshed successfully");
+                }
+              } catch(error){
+                logger.error("Error refreshing token", error)
+              }
+            }, 55 * 60 * 1000) // 55 minutes
 
         res.status(200).json({
             success: true,
             message: "OAuth flow completed successfully",
-            user: newUser._id
+            data: newUser._id,
         })
     }catch(error){
         logger.error("Error finalizing OAuth", error)
