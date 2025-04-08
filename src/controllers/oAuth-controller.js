@@ -113,11 +113,11 @@ export const finalizeOAuth = async (req, res) => {
         }
 
         const defaultPassword = generateRandomPassword(8)
-
+        console.log("default password", defaultPassword)
         const newUser = new User({
             name,
             email,
-            password: defaultPassword, 
+            password: "defaultPassword", 
             oAuthSub: sub,
             profilePicture: picture
         })

@@ -65,7 +65,7 @@ export const loginUser = async (req, res) => {
       logger.warn("User not found");
       return res.status(401).json({
         success: false,
-        message: "Invalid username",
+        message: "Invalid email",
       });
     }
     const isValidPassword = await user.comparePassword(password);
