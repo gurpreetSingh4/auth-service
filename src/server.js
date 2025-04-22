@@ -42,7 +42,7 @@ app.use((req, res, next) => {
     })
 })
 
-app.use('api/auth/register', sensitiveEndpointsRateLimiter)
+// app.use('api/auth/register', sensitiveEndpointsRateLimiter)
 
 // routes
 app.use("/api/auth", router)
