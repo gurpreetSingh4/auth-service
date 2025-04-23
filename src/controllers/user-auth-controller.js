@@ -234,9 +234,11 @@ export const userRegEmails = async (req, res) => {
   if (!user?.registeredEmailsData) {
     return [];
   }
+
   const userData = user.registeredEmailsData.map((entry) => ({
     name: entry.name,
     email: entry.email,
+    profilePic: entry.picture
   }));
   
   res.status(200).json({

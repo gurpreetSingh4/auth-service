@@ -124,8 +124,8 @@ export const finalizeOAuth = async (req, res) => {
         "EX",
         3599
       );
-      isUserExist.password = undefined; // remove password from user object
-      req.user = isUserExist;
+      const {password, ...otherData} =isUserExist
+      req.user = otherData;
       return res.redirect(
         `${process.env.VITE_OAUTH_CALLBACK}?success=true&userid=${isUserExist._id}`
       );
