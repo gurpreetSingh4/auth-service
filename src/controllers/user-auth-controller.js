@@ -1,5 +1,6 @@
 import { redisClient } from "../config/redis-client.js";
 import { User } from "../models/user.js";
+import { UserRegisteredEmailsData } from "../models/UserRegisteredEmailsData.js";
 import { generateJwtToken, refreshAuthToken } from "../utils/generateToken.js";
 import { logger } from "../utils/logger.js";
 import { validateLogin, validateRegisteration } from "../utils/validation.js";
@@ -180,7 +181,69 @@ export async function logoutUser(req, res) {
   }
 }
 
+export const userInfo = async (req, res) => {
+  try {
+    // const userId =  "6805f32d954df6eafda564dd"
+    const userId =  req.query.userid;
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID is missing in query parameter",
+      });
+    }
+    const user = await User.findById(userId).lean(); // `lean` returns a plain JS object
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found in database",
+      });
+    }
 
+    const { password, ...otherInfo } = user;
+
+    return res.status(200).json({
+      success: true,
+      data: otherInfo,
+    });
+  } catch (err) {
+    console.error("Error fetching user info:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+
+export const userRegEmails = async (req, res) => {
+  const userId = req.query.userid;
+  if(!userId){
+    return res.status(400).json({
+      success: false,
+      message: "user id not found in req query parameter"
+    })
+  }
+  const user = await UserRegisteredEmailsData.findOne({user: userId})
+  if(!user){
+    return res.status(400).json({
+      success: false,
+      message: "user not found in data base"
+    })
+  }
+
+  if (!user?.registeredEmailsData) {
+    return [];
+  }
+  const userData = user.registeredEmailsData.map((entry) => ({
+    name: entry.name,
+    email: entry.email,
+  }));
+  
+  res.status(200).json({
+    success: true,
+    data: userData
+  })
+}
 
 
 

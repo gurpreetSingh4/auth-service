@@ -127,13 +127,8 @@ export const finalizeOAuth = async (req, res) => {
       isUserExist.password = undefined; // remove password from user object
       req.user = isUserExist;
       return res.redirect(
-        `http://localhost:5000/api/userdata?success=true&userId=${isUserExist._id}`
+        `${process.env.VITE_OAUTH_CALLBACK}?success=true&userid=${isUserExist._id}`
       );
-    //   return res.status(200).json({
-    //     success: true,
-    //     message: "User already exists and access token is updated",
-    //     userId: isUserExist._id,
-    //   });
     }
 
     const defaultPassword = generateRandomPassword(8);
@@ -182,15 +177,8 @@ export const finalizeOAuth = async (req, res) => {
         logger.error("Error refreshing token", error);
       }
     }, 55 * 60 * 1000); // 55 minutes
-
-    // res.status(200).json({
-    //   success: true,
-    //   message: "OAuth flow completed successfully",
-    //   data: newUser._id,
-    // });
-
     return res.redirect(
-      `http://localhost:5000/api/user?success=true&userId=${newUser._id}`
+      `${process.env.VITE_OAUTH_CALLBACK}?success=true&userid=${newUser._id}`
     );
   } catch (error) {
     logger.error("Error finalizing OAuth", error);
@@ -201,35 +189,4 @@ export const finalizeOAuth = async (req, res) => {
   }
 };
 
-export const userInfo = async (req, res) => {
-  try {
-    // const userId =  "6805f32d954df6eafda564dd"
-    const userId =  req.query.userid;
-    if (!userId) {
-      return res.status(400).json({
-        success: false,
-        message: "User ID is missing in query parameter",
-      });
-    }
-    const user = await User.findById(userId).lean(); // `lean` returns a plain JS object
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found in database",
-      });
-    }
 
-    const { password, ...otherInfo } = user;
-
-    return res.status(200).json({
-      success: true,
-      data: otherInfo,
-    });
-  } catch (err) {
-    console.error("Error fetching user info:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
-  }
-};
