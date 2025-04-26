@@ -127,7 +127,7 @@ export const finalizeOAuth = async (req, res) => {
       const {password, ...otherData} =isUserExist
       req.user = otherData;
       return res.redirect(
-        `${process.env.VITE_OAUTH_CALLBACK}?success=true&userid=${isUserExist._id}`
+        `${process.env.FRONT_END_SERVICE}/oauth/callback?success=true&userid=${isUserExist._id}`
       );
     }
 
@@ -178,7 +178,7 @@ export const finalizeOAuth = async (req, res) => {
       }
     }, 55 * 60 * 1000); // 55 minutes
     return res.redirect(
-      `${process.env.VITE_OAUTH_CALLBACK}?success=true&userid=${newUser._id}`
+      `${process.env.FRONT_END_SERVICE}/oauth/callback?success=true&userid=${newUser._id}`
     );
   } catch (error) {
     logger.error("Error finalizing OAuth", error);
