@@ -230,15 +230,17 @@ export const userRegEmails = async (req, res) => {
       message: "user not found in data base"
     })
   }
-
-  if (!user?.registeredEmailsData) {
+  console.log("sirf user",user)
+  
+  console.log("sirf user reg emails",user.registeredEmailsData)
+  if (!user.registeredEmailsData) {
     return [];
   }
 
   const userData = user.registeredEmailsData.map((entry) => ({
-    name: entry.name,
-    email: entry.email,
-    profilePic: entry.picture
+    name: entry.regEmailName,
+    email: entry.regEmail,
+    profilePic: entry.regEmailPicture
   }));
   
   res.status(200).json({

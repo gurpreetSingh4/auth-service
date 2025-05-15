@@ -81,6 +81,8 @@ export function getGoogleOAuthUrl() {
     prompt: "consent",
   };
   const queryString = new URLSearchParams(options).toString();
+  
+  // redirect_uri=http%3A%2F%2Flocalhost%3A3001%2Fapi%2Fauth%2Fgoogle%2Fcallback&client_id=459486708962-4prt83bc3rtl03r6evrgvm5ki1d58trb.apps.googleusercontent.com&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile+https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email&access_type=offline&prompt=consent
   return `${process.env.OAUTH_ROOT_URL}?${queryString}`;
 }
 

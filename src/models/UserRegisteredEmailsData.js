@@ -1,21 +1,18 @@
 import mongoose from "mongoose"
 
 const RegisteredEmailDataSchema = new mongoose.Schema({
-    email: {
+    regEmail: {
       type: String,
       required: true,
     },
-    emailRefreshToken: {
+    regEmailRefreshToken: {
       type: String,
     },
-    picture: {
+    regEmailPicture: {
       type: String,
       default:process.env.DEFAULT_PROFILE_PIC,
     },
-    name: {
-      type: String,
-    },
-    sub: {
+    regEmailName: {
       type: String,
     },
   });
